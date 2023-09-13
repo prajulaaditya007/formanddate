@@ -3,13 +3,15 @@ import DataTable from "react-data-table-component";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "./style.css";
-import moment from "moment";
+import { format, parse, isAfter } from "date-fns";
 
 const MyTableComponent: React.FC = () => {
-  const [data, setData]: any = useState([]);
-  const [selectedRow, setSelectedRow]: any = useState(null);
+  const [data, setData] = useState([]);
+  const [selectedRow, setSelectedRow] = useState(null);
   const [startDate, setStartDate] = useState<Date | null>(new Date());
   const [endDate, setEndDate] = useState<Date | null>(new Date("9999-12-31"));
+  const [updatedStartDate, setUpdatedStartDate] = useState<Date | null>(null);
+  const [updatedEndDate, setUpdatedEndDate] = useState<Date | null>(null);
 
   useEffect(() => {
     // Simulate API response
@@ -33,22 +35,18 @@ const MyTableComponent: React.FC = () => {
     ];
 
     // Format dates and update the data
-    const formattedData = apiResponse.map((item) => {
-      const formattedStartDate = moment(item.startDate, "YYYY-MM-DD").format(
-        "MM/DD/YYYY"
-      );
-      const formattedEndDate = moment(item.endDate, "YYYY-MM-DD").format(
-        "MM/DD/YYYY"
-      );
-      console.log("Formatted Start Date:", formattedStartDate);
-      console.log("Formatted End Date:", formattedEndDate);
-      return {
-        ...item,
-        startDate: formattedStartDate,
-        endDate: formattedEndDate,
-      };
-    });
-    console.log(formattedData);
+    const formattedData = apiResponse.map((item) => ({
+      ...item,
+      startDate: format(
+        parse(item.startDate, "yyyy-MM-dd", new Date()),
+        "MM/dd/yyyy"
+      ),
+      endDate: format(
+        parse(item.endDate, "yyyy-MM-dd", new Date()),
+        "MM/dd/yyyy"
+      ),
+    }));
+
     setData(formattedData);
   }, []);
 
@@ -87,14 +85,13 @@ const MyTableComponent: React.FC = () => {
 
   const handleRowClick = (row: any) => {
     setSelectedRow(row);
-    const parsedStartDate = moment(row.startDate, "MM/DD/YYYY").toDate();
-    const parsedEndDate = moment(row.endDate, "MM/DD/YYYY").toDate();
+    // Parse the selected row's dates using date-fns
+    const parsedStartDate = parse(row.startDate, "MM/dd/yyyy", new Date());
+    const parsedEndDate = parse(row.endDate, "MM/dd/yyyy", new Date());
     setStartDate(parsedStartDate);
     setEndDate(parsedEndDate);
-
-    // Log the parsed dates to the console
-    console.log("Parsed Start Date:", parsedStartDate);
-    console.log("Parsed End Date:", parsedEndDate);
+    setUpdatedStartDate(parsedStartDate); // Initialize the updated dates
+    setUpdatedEndDate(parsedEndDate);
   };
 
   function handleSave() {
@@ -102,6 +99,8 @@ const MyTableComponent: React.FC = () => {
     // For demonstration purposes, we'll just log the selected row.
     console.log(selectedRow);
     setSelectedRow(null); // Close the modal after saving
+    setUpdatedStartDate(startDate);
+    setUpdatedEndDate(endDate);
   }
 
   function handleCancel() {
@@ -118,34 +117,36 @@ const MyTableComponent: React.FC = () => {
         onRowClicked={handleRowClick}
       />
       {/* Render your modal here or include date pickers */}
-      // Inside the render function
       {selectedRow && (
         <div className="modal">
           <h2>Edit Dates for {selectedRow.name}</h2>
           <div className="datepicker">
             <DatePicker
               className="startDate"
-              selected={moment(startDate, "MM/DD/YYYY").toDate()}
+              selected={startDate}
               dateFormat="MM/dd/yyyy"
-              onChange={(date) =>
-                setStartDate(moment(date, "MM/DD/YYYY").toDate())
-              }
+              onChange={(date: Date) => setStartDate(date)}
               minDate={new Date()} // Rule 1: StartDate cannot be in the past
-              maxDate={endDate} // Rule 3: EndDate cannot be less than StartDate
+              // maxDate={endDate} // Rule 3: EndDate cannot be less than StartDate
             />
             <DatePicker
               className="endDate"
-              selected={moment(endDate, "MM/DD/YYYY").toDate()}
+              selected={endDate}
               dateFormat="MM/dd/yyyy"
-              onChange={(date) =>
-                setEndDate(moment(date, "MM/DD/YYYY").toDate())
-              }
+              onChange={(date: Date) => setEndDate(date)}
               minDate={startDate} // Rule 3: EndDate cannot be less than StartDate
-              maxDate={moment("9999-12-31").toDate()} // Rule 4: Calendar starts from MINIMUM DATE
+              maxDate={parse("9999-12-31", "yyyy-MM-dd", new Date())} // Rule 4: Calendar starts from MINIMUM DATE
             />
           </div>
           <button onClick={handleSave}>Save</button>
           <button onClick={handleCancel}>Cancel</button>
+        </div>
+      )}
+      {updatedStartDate && updatedEndDate && (
+        <div className="updated-dates">
+          <h3>Updated Dates:</h3>
+          <p>Start Date: {format(updatedStartDate, "MM/dd/yyyy")}</p>
+          <p>End Date: {format(updatedEndDate, "MM/dd/yyyy")}</p>
         </div>
       )}
     </div>
